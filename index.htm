@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>買幾送幾不虧本</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f5f5f7;color:#1d1d1f;padding:16px;line-height:1.5}
+.container{max-width:480px;margin:0 auto}
+h1{font-size:22px;font-weight:700;margin-bottom:16px}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.card-title{font-size:14px;font-weight:600;color:#86868b;margin-bottom:10px}
+label{display:block;font-size:14px;font-weight:500;margin-bottom:4px;color:#1d1d1f}
+select,input[type=number]{width:100%;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;font-size:16px;background:#fff;color:#1d1d1f;outline:none}
+select:focus,input:focus{border-color:#007aff}
+.row{display:flex;gap:10px;margin-top:10px}
+.row>*{flex:1}
+.budget-box{background:#f0f7ff;border-radius:10px;padding:12px;text-align:center;border:1.5px solid #cce4ff;margin-top:12px}
+.budget-box .label{font-size:12px;color:#5f5f62}
+.budget-box .amount{font-size:28px;font-weight:700;color:#007aff}
+.budget-box .sub{font-size:13px;color:#5f5f62;margin-top:2px}
+.product-list{list-style:none}
+.product-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f2;gap:10px}
+.product-item:last-child{border-bottom:none}
+.product-item .check{width:22px;height:22px;accent-color:#007aff;flex-shrink:0}
+.product-item .info{flex:1}
+.product-item .name{font-size:15px;font-weight:500}
+.product-item .price{font-size:13px;color:#86868b}
+.product-item .badge{font-size:12px;padding:3px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge.ok{background:#e8f5e9;color:#2e7d32}
+.badge.over{background:#fce4ec;color:#c62828}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px}
+.summary-row .val{font-weight:600}
+.over-budget{color:#c62828;font-weight:600}
+.within-budget{color:#2e7d32;font-weight:600}
+.error-box{background:#fff3e0;border:1.5px solid #ffcc02;border-radius:10px;padding:10px 12px;font-size:14px;color:#e65100;text-align:center}
+.footer{margin-top:20px;text-align:center;font-size:12px;color:#86868b;padding-bottom:30px}
+.count-badge{font-size:12px;color:#86868b;margin-top:4px}
+.calc-detail{font-size:12px;color:#86868b;text-align:center;margin-top:6px}
+.info-row{display:flex;gap:12px;margin-top:8px;font-size:13px;color:#86868b}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>買幾送幾不虧本</h1>
+
+<div class="card">
+<div class="card-title">① 選擇主商品</div>
+<label for="productSelect">商品</label>
+<select id="productSelect"></select>
+<div class="info-row">
+<span>售價: <strong id="displayPrice" style="color:#1d1d1f">-</strong></span>
+<span>全球SV: <strong id="displaySV" style="color:#1d1d1f">-</strong></span>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">② 職級與數量設定</div>
+<label for="rankSelect">職級（獎金比例）</label>
+<select id="rankSelect">
+<option value="0.05">會員 5%</option>
+<option value="0.10">主任 10%</option>
+<option value="0.15">副理 15%</option>
+<option value="0.20" selected>經理 20%</option>
+</select>
+<div class="row">
+<div><label for="buyQty">買</label><input type="number" id="buyQty" min="1" value="1"></div>
+<div><label for="freeQty">送</label><input type="number" id="freeQty" min="1" value="1"></div>
+</div>
+<div class="budget-box">
+<div class="label">贈品可用總金額</div>
+<div class="amount" id="displayBudget">0</div>
+<div class="sub">= 全球SV × 獎金比例 × 25 × 購買數量</div>
+</div>
+<div class="calc-detail" id="calcDetail"></div>
+</div>
+
+<div class="card">
+<div class="card-title">③ 選擇贈品（可複選）</div>
+<div class="count-badge">尚可選 <span id="remainCount">0</span> 項</div>
+<ul class="product-list" id="giftList"></ul>
+</div>
+
+<div class="card">
+<div class="card-title">④ 試算結果</div>
+<div class="summary-row"><span>贈品總金額</span><span class="val" id="summaryTotal">NT$ 0</span></div>
+<div class="summary-row"><span>可用預算</span><span class="val" id="summaryBudget">NT$ 0</span></div>
+<div class="summary-row" id="summaryResult"></div>
+</div>
+
+<div id="overageNotice" style="display:none" class="error-box"></div>
+
+<div class="footer">商品資料已內嵌於此檔案</div>
+</div>
+
+<script>
+var PRODUCTS=[
+{name:"995生技營養品",price:5980,sv:164},
+{name:"永生福朗",price:1770,sv:48},
+{name:"康爾喜",price:1890,sv:52},
+{name:"葡眾360計劃",price:11088,sv:320},
+{name:"樟芝益",price:5980,sv:164},
+{name:"百克斯",price:1386,sv:40},
+{name:"百克斯(純素)",price:1386,sv:40},
+{name:"艾逸",price:1344,sv:36},
+{name:"艾逸(純素)",price:1344,sv:36},
+{name:"樂優",price:2100,sv:60},
+{name:"寧康福",price:3150,sv:92},
+{name:"樟芝菌絲體滴粒",price:5500,sv:160},
+{name:"康爾喜(N)",price:1960,sv:52},
+{name:"康爾暢",price:2050,sv:60},
+{name:"衛傑",price:1260,sv:36},
+{name:"衛傑(奶素)",price:1260,sv:36},
+{name:"紓衛菓",price:700,sv:20},
+{name:"活逸康",price:5796,sv:172},
+{name:"猴頭菇菌絲體膠囊",price:3700,sv:104},
+{name:"貝力耐",price:2800,sv:80},
+{name:"康爾動",price:1950,sv:56},
+{name:"醣利佳",price:2330,sv:64},
+{name:"青采孅",price:2180,sv:60},
+{name:"靚妍飲",price:2150,sv:60},
+{name:"芯潤飲",price:2150,sv:60},
+{name:"欣悅康",price:3100,sv:88},
+{name:"扶百生",price:2005,sv:56},
+{name:"暢且利",price:1764,sv:48},
+{name:"清明亮",price:3500,sv:100},
+{name:"清明亮(純素)",price:3500,sv:100},
+{name:"小悅光飲",price:1400,sv:40},
+{name:"康貝寧",price:1880,sv:52},
+{name:"康悅兒",price:1764,sv:48},
+{name:"貝納Q10",price:3350,sv:96},
+{name:"禾玥",price:1400,sv:40},
+{name:"迪康",price:1764,sv:48},
+{name:"力盛",price:1764,sv:48},
+{name:"餐包",price:1344,sv:36},
+{name:"原味餐包",price:1344,sv:36},
+{name:"銀燦餐包",price:1480,sv:40},
+{name:"桑本力元",price:1480,sv:40},
+{name:"奇芮(犬)",price:900,sv:20},
+{name:"Hi Kiss+洗面乳",price:700,sv:20},
+{name:"蘆露50g*3",price:700,sv:20},
+{name:"蘆露180g",price:840,sv:24},
+{name:"YaYaMini",price:1400,sv:40},
+{name:"蟬花護手霜",price:840,sv:24},
+{name:"淨膚皂",price:870,sv:24},
+{name:"貝益潔牙膏",price:700,sv:20},
+{name:"Hispray",price:570,sv:16},
+{name:"甦活保濕露",price:1550,sv:44},
+{name:"甦活精萃",price:1500,sv:44},
+{name:"甦活緊緻霜",price:2500,sv:72}
+];
+function fm(n){return'NT$'+Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function go(){
+var sel=document.getElementById('productSelect');
+var h='';
+for(var i=0;i<PRODUCTS.length;i++){h+='<option value="'+i+'">'+PRODUCTS[i].name+' ('+fm(PRODUCTS[i].price)+')</option>'}
+sel.innerHTML=h;
+var rank=document.getElementById('rankSelect'),buy=document.getElementById('buyQty'),free=document.getElementById('freeQty');
+function st(){
+var idx=parseInt(sel.value),p=PRODUCTS[idx],b=parseInt(buy.value)||1,f=parseInt(free.value)||1,r=parseFloat(rank.value),bp=p?Math.round(p.sv*r*25):0;
+return{prod:p,rate:r,bq:b,fq:f,budget:bp*b,bp:bp}};
+function up(){
+var s=st();
+document.getElementById('displayPrice').textContent=s.prod?fm(s.prod.price):'-';
+document.getElementById('displaySV').textContent=s.prod?s.prod.sv:'-';
+document.getElementById('displayBudget').textContent=fm(s.budget);
+document.getElementById('calcDetail').textContent=s.prod?s.prod.sv+'SV\u00d7'+(s.rate*100)+'%\u00d725='+fm(s.bp)+'/盒':'';
+var list=document.getElementById('giftList');
+var ci=[],cbs=list.querySelectorAll('input[type="checkbox"]');
+for(var j=0;j<cbs.length;j++){if(cbs[j].checked)ci.push(parseInt(cbs[j].dataset.idx))}
+var max=s.fq;list.innerHTML='';
+for(var k=0;k<PRODUCTS.length;k++){var p=PRODUCTS[k],is=ci.indexOf(k)!==-1,ok=p.price<=s.budget;
+var li=document.createElement('li');li.className='product-item';
+var cb=document.createElement('input');cb.type='checkbox';cb.className='check';cb.dataset.idx=k;cb.checked=is;
+if(!ok&&!is)cb.disabled=true;
+(function(c,m){cb.onclick=function(){var a=list.querySelectorAll('input[type="checkbox"]:checked');
+if(a.length>m){this.checked=false;alert('\u6700\u591a'+m+'\u9805');return}sm()}})(k,max);
+var info=document.createElement('div');info.className='info';info.innerHTML='<div class="name">'+p.name+'</div><div class="price">'+fm(p.price)+' SV'+p.sv+'</div>';
+var badge=document.createElement('span');badge.className='badge'+(ok?' ok':' over');badge.textContent=ok?'\u53ef\u9001':'\u8d85\u51fa';
+li.appendChild(cb);li.appendChild(info);li.appendChild(badge);list.appendChild(li)}
+sm()}
+function sm(){
+var s=st();
+var chk=document.querySelectorAll('#giftList input[type="checkbox"]:checked');
+var t=0;for(var i=0;i<chk.length;i++){t+=PRODUCTS[parseInt(chk[i].dataset.idx)].price||0}
+document.getElementById('remainCount').textContent=Math.max(0,s.fq-chk.length);
+document.getElementById('summaryTotal').textContent=fm(t);
+document.getElementById('summaryBudget').textContent=fm(s.budget);
+var re=document.getElementById('summaryResult'),no=document.getElementById('overageNotice');
+if(chk.length===0){re.innerHTML='<span style="color:#86868b">\u8acb\u9078</span>';no.style.display='none';return}
+if(t<=s.budget){re.innerHTML='<span class="within-budget">\u9810\u7b97\u5167 \u5269'+fm(s.budget-t)+'</span>';no.style.display='none'}
+else{re.innerHTML='<span class="over-budget">\u8d85\u51fa</span>';no.style.display='block';no.textContent='\u8d85\u51fa\uff1a'+fm(t-s.budget)}}
+sel.onchange=up;rank.onchange=up;buy.oninput=up;free.oninput=up;up()}
+go();
+</script>
+</body>
+</html>
